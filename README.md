@@ -19,3 +19,4 @@ and so on...
 
 and if I even had more time, I would have added nav drawer and settings and much more.
 
+<img src="https://i.imgur.com/JihfXWw.jpg" width="400">
