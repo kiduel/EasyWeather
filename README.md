@@ -1,6 +1,9 @@
 # EasyWeather
 Easy Weather app
 
+* When testing the app, please use API level which is below 28. According to the documentation. "Starting with Android 9.0 (API level 28), cleartext support is disabled by default" - FOr more information, please read the following disucssion, https://stackoverflow.com/questions/45940861/android-8-cleartext-http-traffic-not-permitted
+
+
 4 hours was a very short time. 
 
 The application gets the current city location and displays the current weather of the city.
