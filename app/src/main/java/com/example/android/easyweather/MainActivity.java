@@ -1,14 +1,12 @@
 package com.example.android.easyweather;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
-import android.location.Address;
-import android.location.Geocoder;
 import android.os.Bundle;
 import android.os.Looper;
 import android.support.annotation.NonNull;
@@ -28,6 +26,8 @@ import com.example.android.easyweather.models.CurrentDayApiResult;
 import com.example.android.easyweather.models.WeatherApiResult;
 import com.example.android.easyweather.models.WeatherData;
 import com.example.android.easyweather.rest.ApiClient;
+import com.example.android.easyweather.utils.Coordinates;
+import com.example.android.easyweather.utils.LocationUtils;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -43,11 +43,9 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -74,9 +72,13 @@ public class MainActivity extends AppCompatActivity {
     private TextView temp,minTemp,maxTemp,humidity,pressure;
     private Dialog dialog;
     private ConstraintLayout constraintLayout;
+    Coordinates coordinates;
+    Coordinates coordinates_two;
 
+    String x;
     private final String API_KEY = "5fb870fb64c3c947b40bbadde5601b4f";
 
+    @SuppressLint("StaticFieldLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -103,7 +105,6 @@ public class MainActivity extends AppCompatActivity {
 
         dialog.setContentView(R.layout.dialog_layout);
 
-
         dialog.show();
 
         checkPermissions();
@@ -112,28 +113,41 @@ public class MainActivity extends AppCompatActivity {
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
+                if ( locationResult != null) {
 
-                if(locationResult!=null){
 
+                    /*
+                    The lat and log are saved in coordinates object,
+                    then network is called only when the coordinate change.
+                     */
+                    Lat = locationResult.getLastLocation().getLatitude();
+                    Lon = locationResult.getLastLocation().getLongitude();
+
+                    if (coordinates == null){
+                        coordinates = new Coordinates(Lat, Lon);
+                        city = LocationUtils.hereLocation(Lat,Lon,MainActivity.this);
+
+                        setDefaultCityWeather(city);
+                        getCurrentCityWeather(city);
+                    } else {
+                        coordinates_two = new Coordinates(Lat, Lon);
+                        if (!coordinates.equals(coordinates_two)) {
+                            city = LocationUtils.hereLocation(Lat,Lon,MainActivity.this);
+                            setDefaultCityWeather(city);
+                            getCurrentCityWeather(city);
+                        }
+                    }
+
+                    cityTextView.setText(String.valueOf(city));
                     constraintLayout.setVisibility(View.VISIBLE);
                     dialog.hide();
 
-                    Lat = locationResult.getLastLocation().getLatitude();
-                    Lon = locationResult.getLastLocation().getLongitude();
-                    city=currentLocation(Lat,Lon,MainActivity.this);
-                    cityTextView.setText(String.valueOf(city));
-                    setDefaultCityWeather(city);
-                    getCurrentCityWeather(city);
                 }
-
             }
         };
 
-
         checkForLocationRequest();
         checkForLocationSettings();
-
-
 
     }
 
@@ -216,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
                             }
                             break;
                         case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                            Toast.makeText(MainActivity.this, "Please change device", Toast.LENGTH_LONG).show();
+                            Toast.makeText(MainActivity.this, "Please try another the device", Toast.LENGTH_LONG).show();
                     }
                 }
             });
@@ -291,69 +305,44 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private static String currentLocation(double lat, double lon, Context context){
-        String cityName = "";
-
-
-        Geocoder geocoder = new Geocoder(context, Locale.getDefault());
-        List<Address> addresses;
-        try {
-            addresses = geocoder.getFromLocation(lat, lon, 10);
-            if (addresses.size() > 0) {
-                for (Address adr : addresses) {
-                    if (adr.getLocality() != null && adr.getLocality().length() > 0)
-                    {
-                        cityName = adr.getLocality();
-                    }
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return cityName;
-    }
-
     private void getCurrentCityWeather(String city){
 
-        WeatherInterface weatherInterface=ApiClient.getRetrofitInstance().create(WeatherInterface.class);
+            WeatherInterface weatherInterface = ApiClient.getRetrofitInstance().create(WeatherInterface.class);
 
-        final Call<WeatherApiResult> weatherApiResultCall=weatherInterface.getWeather(city,API_KEY);
-        weatherApiResultCall.enqueue(new Callback<WeatherApiResult>() {
-            @Override
-            public void onResponse(Call<WeatherApiResult> call, Response<WeatherApiResult> response) {
-                if(response.isSuccessful()){
+            final Call<WeatherApiResult> weatherApiResultCall = weatherInterface.getWeather(city, API_KEY);
+            weatherApiResultCall.enqueue(new Callback<WeatherApiResult>() {
+                @Override
+                public void onResponse(Call<WeatherApiResult> call, Response<WeatherApiResult> response) {
+                    if ( response.isSuccessful() ) {
 
-                    weatherDataList=response.body().getWeatherDataList();
+                        weatherDataList = response.body().getWeatherDataList();
 
-                    List<WeatherData> weatherData=new ArrayList<>();
+                        List<WeatherData> weatherData = new ArrayList<>();
 
-                    for(int i=0;i<weatherDataList.size()/8;i++){
+                        for (int i = 0; i < weatherDataList.size() / 8; i++) {
 
-                        weatherData.add(weatherDataList.get(i*8));
+                            weatherData.add(weatherDataList.get(i * 8));
+                        }
+
+
+                        weatherAdapter = new WeatherAdapter(MainActivity.this, weatherData);
+
+                        recyclerView.setAdapter(weatherAdapter);
+
+
+                    } else {
+
+                        Toast.makeText(MainActivity.this, "No", Toast.LENGTH_SHORT).show();
                     }
-
-
-
-                    weatherAdapter=new WeatherAdapter(MainActivity.this,weatherData);
-
-                    recyclerView.setAdapter(weatherAdapter);
-
-
-                } else {
-
-
-                    Toast.makeText(MainActivity.this, "No", Toast.LENGTH_SHORT).show();
                 }
-            }
 
-            @Override
-            public void onFailure(Call<WeatherApiResult> call, Throwable t) {
+                @Override
+                public void onFailure(Call<WeatherApiResult> call, Throwable t) {
 
-                Toast.makeText(MainActivity.this, ""+t.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "" + t.getMessage(), Toast.LENGTH_SHORT).show();
 
-            }
-        });
+                }
+            });
 
 
     }
@@ -389,7 +378,6 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
 
     }
 
