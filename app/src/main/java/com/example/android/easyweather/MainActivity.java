@@ -123,6 +123,7 @@ public class MainActivity extends AppCompatActivity {
                     city=currentLocation(Lat,Lon,MainActivity.this);
                     cityTextView.setText(String.valueOf(city));
                     setDefaultCityWeather(city);
+                    getCurrentCityWeather(city);
                 }
 
             }
@@ -132,7 +133,7 @@ public class MainActivity extends AppCompatActivity {
         checkForLocationRequest();
         checkForLocationSettings();
 
-        getCurrentCityWeather();
+
 
     }
 
@@ -215,7 +216,7 @@ public class MainActivity extends AppCompatActivity {
                             }
                             break;
                         case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                            Toast.makeText(MainActivity.this, "Изменение настроек недоступно.Попробуйте на другом устройстве", Toast.LENGTH_LONG).show();
+                            Toast.makeText(MainActivity.this, "Please change device", Toast.LENGTH_LONG).show();
                     }
                 }
             });
@@ -290,7 +291,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
     private static String currentLocation(double lat, double lon, Context context){
         String cityName = "";
 
@@ -314,11 +314,11 @@ public class MainActivity extends AppCompatActivity {
         return cityName;
     }
 
-    private void getCurrentCityWeather(){
+    private void getCurrentCityWeather(String city){
 
         WeatherInterface weatherInterface=ApiClient.getRetrofitInstance().create(WeatherInterface.class);
 
-        final Call<WeatherApiResult> weatherApiResultCall=weatherInterface.getWeather("Tashkent",API_KEY);
+        final Call<WeatherApiResult> weatherApiResultCall=weatherInterface.getWeather(city,API_KEY);
         weatherApiResultCall.enqueue(new Callback<WeatherApiResult>() {
             @Override
             public void onResponse(Call<WeatherApiResult> call, Response<WeatherApiResult> response) {
@@ -360,6 +360,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void setDefaultCityWeather(String city){
+
 
         WeatherInterface  weatherInterface=ApiClient.getRetrofitInstance().create(WeatherInterface.class);
 
